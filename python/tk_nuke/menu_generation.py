@@ -1,11 +1,11 @@
 # Copyright (c) 2016 Shotgun Software Inc.
-# 
+#
 # CONFIDENTIAL AND PROPRIETARY
-# 
-# This work is provided "AS IS" and subject to the Shotgun Pipeline Toolkit 
+#
+# This work is provided "AS IS" and subject to the Shotgun Pipeline Toolkit
 # Source Code License included in this distribution package. See LICENSE.
-# By accessing, using, copying or modifying this work you indicate your 
-# agreement to the Shotgun Pipeline Toolkit Source Code License. All rights 
+# By accessing, using, copying or modifying this work you indicate your
+# agreement to the Shotgun Pipeline Toolkit Source Code License. All rights
 # not expressly granted therein are reserved by Shotgun Software Inc.
 
 """Menu handling for Nuke and Hiero."""
@@ -549,20 +549,21 @@ class NukeMenuGenerator(BaseMenuGenerator):
         for fav in self.engine.get_setting("menu_favourites"):
             app_instance_name = fav["app_instance"]
             menu_name = fav["name"]
+            hotkey = fav.get("hotkey")
 
             # Scan through all menu items.
             for cmd in menu_items:
                  if cmd.app_instance_name == app_instance_name and cmd.name == menu_name:
                      # Found our match!
-                     cmd.add_command_to_menu(menu_handle)
+                     cmd.add_command_to_menu(menu_handle, hotkey=hotkey)
                      # Mark as a favourite item.
                      cmd.favourite = True
         menu_handle.addSeparator()
-        
+
         # Now go through all of the menu items.
         # Separate them out into various sections.
         commands_by_app = {}
-        
+
         for cmd in menu_items:
             if cmd.type == "node":
                 # Get icon if specified - default to tank icon if not specified.
@@ -581,7 +582,7 @@ class NukeMenuGenerator(BaseMenuGenerator):
                 app_name = cmd.app_name
                 if app_name is None:
                     # Unparented app.
-                    app_name = "Other Items" 
+                    app_name = "Other Items"
                 if not app_name in commands_by_app:
                     commands_by_app[app_name] = []
                 commands_by_app[app_name].append(cmd)
@@ -596,7 +597,7 @@ class NukeMenuGenerator(BaseMenuGenerator):
                 )
                 # Now set up the callback.
                 cmd.add_command_to_pane_menu(pane_menu)
-        
+
         # Now add all apps to main menu.
         self._add_app_menu(commands_by_app, menu_handle)
 
@@ -624,15 +625,15 @@ class NukeMenuGenerator(BaseMenuGenerator):
         Destroys any menus that were created.
         """
         # Important!
-        # The menu code in nuke seems quite unstable, so make sure to test 
+        # The menu code in nuke seems quite unstable, so make sure to test
         # any changes done in relation to menu deletion carefully.
         # the removeItem() method seems to work on some version of Nuke, but not all.
         # For example, the following code works in nuke 7, not nuke 6:
         # nuke.menu("Nuke").removeItem("Shotgun")
-        
-        # The strategy below is to be as safe as possible, acquire a handle to 
+
+        # The strategy below is to be as safe as possible, acquire a handle to
         # the menu by iteration (if you store the handle object, they may expire
-        # and when you try to access them they underlying object is gone and things 
+        # and when you try to access them they underlying object is gone and things
         # will crash). The clearMenu() method seems to work on both v6 and v7.
         menus = ["Nuke", "Pane", "Nodes"]
         for menu in menus:
@@ -648,7 +649,7 @@ class NukeMenuGenerator(BaseMenuGenerator):
         Adds a context menu which displays the current context.
 
         :param menu_handle: A handle to Nuke's top-level menu manager object.
-        """        
+        """
         ctx = self.engine.context
         ctx_name = str(ctx)
 
@@ -674,17 +675,17 @@ class NukeMenuGenerator(BaseMenuGenerator):
                 # More than one menu entry for this app.
                 # Make a sub menu and put all items in the sub menu.
                 app_menu = menu_handle.addMenu(app_name)
-                
+
                 # Get the list of menu cmds for this app.
                 cmds = commands_by_app[app_name]
                 # Make sure it is in alphabetical order.
-                cmds.sort(key=lambda x: x.name) 
-                
+                cmds.sort(key=lambda x: x.name)
+
                 for cmd in cmds:
                     cmd.add_command_to_menu(app_menu)
             else:
                 # This app only has a single entry.
-                # TODO: Should this be labelled with the name of the app 
+                # TODO: Should this be labelled with the name of the app
                 # or the name of the menu item? Not sure.
                 cmd_obj = commands_by_app[app_name][0]
                 if not cmd_obj.favourite:
@@ -889,14 +890,14 @@ class HieroAppCommand(BaseAppCommand):
             #
             # These objects all have a selection property that returns a list of objects.
             # We extract the selected objects and set the engine "last clicked" state:
-            
+
             # Set the engine last clicked selection state.
             if self.sender:
                 self.engine._last_clicked_selection = self.sender.selection()
             else:
                 # Main menu.
                 self.engine._last_clicked_selection = []
-            
+
             # Set the engine last clicked selection area.
             if self.event_type == "kBin":
                 self.engine._last_clicked_area = self.engine.HIERO_BIN_AREA
@@ -906,7 +907,7 @@ class HieroAppCommand(BaseAppCommand):
                 self.engine._last_clicked_area = self.engine.HIERO_SPREADSHEET_AREA
             else:
                 self.engine._last_clicked_area = None
-            
+
             self.engine.logger.debug("")
             self.engine.logger.debug("--------------------------------------------")
             self.engine.logger.debug("A menu item was clicked!")
@@ -916,7 +917,7 @@ class HieroAppCommand(BaseAppCommand):
             for x in self.engine._last_clicked_selection:
                 self.engine.logger.debug("- %r", x)
             self.engine.logger.debug("--------------------------------------------")
-            
+
             # Fire the callback.
             self.callback()
         action.triggered.connect(handler)
@@ -937,13 +938,13 @@ class NukeAppCommand(BaseAppCommand):
         Callback for all non-pane menu commands.
         """
         # This is a wrapped menu callback for whenever an item is clicked
-        # in a menu which isn't the standard nuke pane menu. This ie because 
+        # in a menu which isn't the standard nuke pane menu. This ie because
         # the standard pane menu in nuke provides nuke with an implicit state
         # so that nuke knows where to put the panel when it is created.
         # If the command is called from a non-pane menu however, this implicity
         # state does not exist and needs to be explicity defined.
         #
-        # For this purpose, we set a global flag to hint to the panelling 
+        # For this purpose, we set a global flag to hint to the panelling
         # logic to run its special window logic in this case.
         #
         # Note that because of nuke not using the import_module()
@@ -958,20 +959,20 @@ class NukeAppCommand(BaseAppCommand):
                 delattr(tank, "_callback_from_non_pane_menu")
             except AttributeError:
                 pass
-        
+
     def add_command_to_pane_menu(self, menu):
         """
         Add a command to the pane menu.
-        
+
         :param menu: The menu object to add the new item to.
         """
         icon = self.properties.get("icon")
         menu.addCommand(self.name, self._original_callback, icon=icon)
-        
-    def add_command_to_menu(self, menu, enabled=True, icon=None):
+
+    def add_command_to_menu(self, menu, enabled=True, icon=None, hotkey=None):
         """
         Adds a command to the menu.
-        
+
         :param menu:    The menu object to add the new item to.
         :param enabled: Whether the command will be enabled after it
                         is added to the menu. Defaults to True.
@@ -979,11 +980,11 @@ class NukeAppCommand(BaseAppCommand):
                         for the menu command.
         """
         icon = icon or self.properties.get("icon")
-        hotkey = self.properties.get("hotkey")
-        
+        hotkey = hotkey or self.properties.get("hotkey")
+
         # Now wrap the command callback in a wrapper (see above)
         # which sets a global state variable. This is detected
-        # by the show_panel so that it can correctly establish 
+        # by the show_panel so that it can correctly establish
         # the flow for when a pane menu is clicked and you want
         # the potential new panel to open in that window.
         #
@@ -996,4 +997,3 @@ class NukeAppCommand(BaseAppCommand):
             menu.addCommand(self.name, self.callback, icon=icon)
 
 # -----------------------------------------------------------------------------
-
